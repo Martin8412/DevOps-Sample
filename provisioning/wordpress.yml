@@ -1,0 +1,62 @@
+- name: Install Python since it is not included in Ubuntu 20.04 by default
+  hosts: default
+  gather_facts: False
+
+  tasks:
+    - name: Install Python
+      raw: apt update && apt install -y python
+
+- name: First update the system, and then install PHP and MySQL libraries for Wordpress
+  hosts: default
+
+  tasks:
+    - name: Update system packages
+      package:
+        state: latest
+
+    - name: Install Apache, PHP and MySQL libraries
+      package:
+        name: 
+          - apache2
+          - php 
+          - libapache2-mod-php 
+          - php-mysql
+        state: present
+
+    - name: Copy start script
+      copy:
+        src: ../scripts/start.sh
+        dest: /start.sh
+        mode: '0744'
+        owner: www-data
+        group: www-data
+
+    - name: Enable PHP
+      command: a2enmod php7.4
+
+      # https://github.com/docker-library/httpd/blob/master/2.4/Dockerfile
+      # Modifies the log destination to stdout and stderr for access and error logs respectively
+    - name: Change paths for logs
+      command: sed -ri -e 's!^(\s*CustomLog)\s+\S+!\1 /proc/self/fd/1!g' -e 's!^(\s*ErrorLog)\s+\S+!\1 /proc/self/fd/2!g' -e 's!^(\s*TransferLog)\s+\S+!\1 /proc/self/fd/1!g' "/etc/apache2/sites-enabled/000-default.conf" "/etc/apache2/apache2.conf" "/etc/apache2/conf-enabled/other-vhosts-access-log.conf"
+
+    - name: Change permissions for /var/run/apache2
+      file: dest=/var/run/apache2 owner=www-data group=www-data mode=u=rwX recurse=yes
+      
+    - name: Download Wordpress
+      get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: /tmp/wordpress.tar.gz
+
+    - name: Extract Wordpress
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        remote_src: yes
+        dest: /tmp
+
+    - name: Delete index.html from Apache2
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Copy Wordpress
+      command: cp -r /tmp/wordpress/. /var/www/html/
