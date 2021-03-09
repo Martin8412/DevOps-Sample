@@ -61,5 +61,3 @@ If we are doing user registrations, then we might want to add in SES as well, so
 Depending on what addons we want to use, additional PHP modules and dependencies might be needed.
 
 We'd need to find a better way to go about the salts needed in wp-config.php. For now I've just hardcoded it because the generated ones messed up my templating, but a better templating engine than Bash would probably resolve that. Another issue with the current Wordpress setup is that it can't really be updated without external intervention. Plugins can't be installed either. If the user upgrades the image, then they'll lose the upgrades if the container restarts. This might break the application if the database has had migrations ran on it that are not compatible with the old format stored in the built Docker image. A solution could be to use an EFS volume shared between container replicas for storing Wordpress. Alternatively or maybe even in combination, storage of Wordpress could be in S3. 
-
-A 
