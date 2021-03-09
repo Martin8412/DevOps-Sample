@@ -33,8 +33,6 @@ packer build wordpress.pkr.hcl
 That should spin everything up, if you are logged in to my AWS account. There are a few hardcoded URLs here and there assuming my account ID.
 
 ## What are the components interacting with each other
-This would probably have been easier with a drawing, but my creative skills are not amazing. 
-
 You have the RDS database running in two subnets in the VPC. All services for this run in the same VPC, but they can't reach each other unless specifically allowed to. There's the ECS service running in an ECS cluster. The ECS service talks to the RDS database. The ECS service also talks back and forth to the load balancers. The ECS service updates the target group that the load balancer uses, and the load balancer sends traffic coming in from the internet to the ECS service.
 
 ## What problems did you encounter
@@ -50,14 +48,18 @@ I feel like the setup is already sorta suited for HA. The ECS service containers
 Another thing that I'm annoyed I couldn't find a way to fix, is that I'm using the latest tag for the Docker images. I would strictly prefer to find a way to output the sha256 value from Packer, and be able to use it Terraform in some automated way. That way the images are always the same, and if a container dies, it won't pull whatever has been pushed latest.
 
 ## Tomorrow we want to put this project in production. What would be your advice and choices to achieve that
-I would say that there should probably be a second(or more) pair of eyes having a look at it first. For now it's a rather basic setup, with a lot of smart features not setup quite yet. Though it depends on the amount of expected customers, and how much should be spent on it. 
+I would say that there should probably be a second(or more) pair of eyes having a look at it first. For now it's a rather basic setup, with a lot of smart features not setup quite yet. Though it depends on the amount of expected customers, and how much should be spent on it. Due consideration should be taken to the price of Fargate vs EC2 hosted ECS nodes. Fargate allows for less powerful configurations, but if more powerful, or multiple less powerful nodes are needed, then EC2 can be cheaper given the right parameters. Another consideration is the ability to run multiple instances of WordPress on the same physical nodes which might be an even further cost optimization.
 
 The setup should definitely have an auto scaling group added to it, such that it will automatically scale depending on load. Depending on the ratio of reads to writes, it might be preferable to add a caching proxy in the mix, like Varnish. Perhaps something like Redis could be of use. 
 
-For monitoring there's Prometheus that I'd like to have. Being able to collect data from the Apache processs on how they are doing, and from the RDS databases seem like the bare minimum. The more data we can gather(without impairing performance too much), the better. It will allow us to finely tune the parts that need tuning.
+The hardcoded variables should be given a look for sure. A solution could be to use Terraform input variables to make it more dynamic than it currently is.
+
+For monitoring there's Prometheus that I'd like to have. Being able to collect data from the Apache processs on how they are doing, and from the RDS databases seem like the bare minimum. The more data we can gather(without impairing performance too much), the better. It will allow us to finely tune the parts that need tuning. Having access to average, low and mean values for response time can be an invaluable tool to plan for eventual capacity upgrades or downgrades. Ideally the application should have exactly the right amount of resources to run smooth at any given time, without wasting money. 
 
 If we are doing user registrations, then we might want to add in SES as well, so that we can send emails to users.
 
 Depending on what addons we want to use, additional PHP modules and dependencies might be needed.
 
-We'd need to find a better way to go about the salts needed in wp-config.php. For now I've just hardcoded it because the generated ones messed up my templating, but a better templating engine than Bash would probably resolve that.
+We'd need to find a better way to go about the salts needed in wp-config.php. For now I've just hardcoded it because the generated ones messed up my templating, but a better templating engine than Bash would probably resolve that. Another issue with the current Wordpress setup is that it can't really be updated without external intervention. Plugins can't be installed either. If the user upgrades the image, then they'll lose the upgrades if the container restarts. This might break the application if the database has had migrations ran on it that are not compatible with the old format stored in the built Docker image. A solution could be to use an EFS volume shared between container replicas for storing Wordpress. Alternatively or maybe even in combination, storage of Wordpress could be in S3. 
+
+A 
