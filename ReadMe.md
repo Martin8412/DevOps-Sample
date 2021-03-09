@@ -47,6 +47,8 @@ I ran into issues with Terraform not always managing to destroy resources again 
 ## How would you have done things to have the best HA/automated architecture
 I feel like the setup is already sorta suited for HA. The ECS service containers run behind a load balancer, so I can just change the amount of desired nodes to have in the ECS cluster. The RDS instance can also be scaled up if needed. I do however feel like things would need to be improved to have it be more automated. The service should probably be run in some auto scaling group such that it can scale up and down according to demand. From a more automation stand point, I feel like the manifests should probably be more flexible. Currently I have a bunch of things that are hardcoded, and it would be much improved if data could dynamically be injected into the Terraform and Packer flows. I'm not certain if my use of a script to inject data is the most optimal, but it has not failed me so far.
 
+Another thing that I'm annoyed I couldn't find a way to fix, is that I'm using the latest tag for the Docker images. I would strictly prefer to find a way to output the sha256 value from Packer, and be able to use it Terraform in some automated way. That way the images are always the same, and if a container dies, it won't pull whatever has been pushed latest.
+
 ## Tomorrow we want to put this project in production. What would be your advice and choices to achieve that
 I would say that there should probably be a second(or more) pair of eyes having a look at it first. For now it's a rather basic setup, with a lot of smart features not setup quite yet. Though it depends on the amount of expected customers, and how much should be spent on it. 
 
@@ -55,3 +57,7 @@ The setup should definitely have an auto scaling group added to it, such that it
 For monitoring there's Prometheus that I'd like to have. Being able to collect data from the Apache processs on how they are doing, and from the RDS databases seem like the bare minimum. The more data we can gather(without impairing performance too much), the better. It will allow us to finely tune the parts that need tuning.
 
 If we are doing user registrations, then we might want to add in SES as well, so that we can send emails to users.
+
+Depending on what addons we want to use, additional PHP modules and dependencies might be needed.
+
+We'd need to find a better way to go about the salts needed in wp-config.php. For now I've just hardcoded it because the generated ones messed up my templating, but a better templating engine than Bash would probably resolve that.
